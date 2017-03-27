@@ -12,14 +12,14 @@ class ActorNetwork(object):
         self.TAU = TAU
         self.LEARNING_RATE = LEARNING_RATE
         K.set_session(sess)
-
+        print("state size={}, action size={}".format(state_size,action_size))
         #create model
-        self.model, self.weights, self.state = model_generator.generate(state_size,action_size)
-        self.target_model, self.target_weights, self.target_state = model_generator.generate(state_size,action_size)
+        self.model, self.weights, self.state = model_generator.generate_actor(state_size,action_size)
+        self.target_model, self.target_weights, self.target_state = model_generator.generate_actor(state_size,action_size)
         self.action_grads = tf.placeholder(tf.float32,[None, action_size])
         self.params_grad = tf.gradients(self.model.output, self.weights, -self.action_grads)
         self.optimize = optimizer(LEARNING_RATE).apply_gradients(zip(self.params_grad, self.weights))
-        self.sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.global_variables_initializer())
 
     def train(self,states,action_grads):
         self.sess.run(self.optimize,feed_dict={

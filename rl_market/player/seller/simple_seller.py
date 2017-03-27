@@ -1,4 +1,5 @@
-from base import Seller
+from .base import Seller
+import numpy as np
 
 class SimpleSeller(Seller):
     def __init__(self, quality_sampler, cost_sampler, price_sampler,
@@ -12,25 +13,29 @@ class SimpleSeller(Seller):
 
         self.discount_factor = discount_factor
 
-        self.reset()
+        self.reset(hard = True)
 
-    def reset(self):
-        self.quality = self.quality_sampler.sample()
-        self.cost = self.cost_sampler.sample()
+    def reset(self, hard):
+        if hard:
+            self.quality = self.quality_sampler.sample()
+            self.cost = self.cost_sampler.sample()
         self.trade_history = []
 
     def decide_price(self, game, index):
-        nr_history = len(game.duration)
+        nr_history = game.duration
         if nr_history <=2:
             return self.price_sampler.sample()
         last_price = game.price[-1][index]
         last_trade_amount = game.trade_amount[-1][index]
         last_profit = (last_price - self.cost) * last_trade_amount
         self.trade_history.append((last_price, last_profit))
+        if len(self.trade_history)> 20:
+            self.trade_history=self.trade_history[1:]
         #find the price most successful and sample from that range
         best_price, best_profit = None, 0
-        for price, profit in self.trade_history:
-            discounted_profit = profit * self.discount_factor
+        for idx, (price, profit) in enumerate(self.trade_history):
+            interval = len(self.trade_history) - idx
+            discounted_profit = profit * np.power(self.discount_factor, interval)
             if discounted_profit > best_profit:
                 best_price = price
                 best_profit = profit

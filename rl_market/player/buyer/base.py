@@ -6,7 +6,7 @@ class Buyer(object):
     def reset(self):
         pass
 
-    def decide_buy_prob(views, prices, qualities):
+    def decide_buy_prob(self, views, prices, qualities):
         """
         here we assume price & quality are bounded in [0,1]
         """

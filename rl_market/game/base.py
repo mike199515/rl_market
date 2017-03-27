@@ -3,6 +3,8 @@ class Game(object):
     """
     generic game interface
     """
+    state_dim = None
+    action_dim = None
 
     def __init__(self):
         pass

@@ -1,13 +1,13 @@
-from base import Buyer
+from .base import Buyer
 
 class SimpleBuyer(Buyer):
     def __init__(self):
         pass
 
-    def reset(self):
+    def reset(self, hard):
         pass
 
-    def decide_buy_prob(views, prices, qualities):
+    def decide_buy_prob(self, views, prices, qualities):
         #for massive buyers, each view is evenly distributed, no need to sample
-        ret = views * (1-prices) * qualities
+        ret = views * (1-prices)
         return ret
