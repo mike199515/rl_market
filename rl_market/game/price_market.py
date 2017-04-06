@@ -6,17 +6,19 @@ class PriceMarket(Game):
     def __init__(self,
             sellers,
             buyer,
-            max_duration):
+            max_duration,
+            nr_observation = 1):
         super(PriceMarket,self).__init__()
 
         self.max_duration = max_duration
         self.sellers = sellers
         self.buyer = buyer
+        self.nr_observation = nr_observation
         self.reset()
         pass
 
     def reset(self, hard = False):
-        self.state_dim = len(self.sellers) * 4
+        self.state_shape = (self.nr_observation, 4, len(self.sellers))
         self.action_dim = len(self.sellers)
         self.duration = 0
         self.view=[]
@@ -27,20 +29,27 @@ class PriceMarket(Game):
         for seller in self.sellers:
             seller.reset(hard)
         self.buyer.reset(hard)
-        #we step for one round for observation to be valid
-        self.step(np.ones(len(self.sellers)))
+        #we step for nr_observation round for observation to be valid
+        for i in range(self.nr_observation):
+            self.step(np.ones(len(self.sellers)))
 
     def get_observation(self):
-        if len(self.view) == 0:
+        if len(self.view) < self.nr_observation:
             assert(False),"no observation available"
-        last_view=self.view[-1]
-        last_trade_amount=self.trade_amount[-1]
-        last_trade_value=self.trade_value[-1]
-        last_price=self.price[-1]
-        state = np.array((last_view,last_trade_amount,last_trade_value,last_price))
-        return state
+        states = []
+        for i in range(self.nr_observation):
+            last_view=self.view[-1-i]
+            last_trade_amount=self.trade_amount[-1-i]
+            last_trade_value=self.trade_value[-1-i]
+            last_price=self.price[-1-i]
+            state = np.array((last_view,last_trade_amount,last_trade_value,last_price))
+            states.append(state)
+
+        states = np.array(states)
+        return states
 
     def get_observation_string(self):
+        assert(False),"obsoleted"
         state  = self.get_observation()
         ret = " view {}:{}\n trade_amount {}:{}\n trade_value {}:{}\n price {}:{}".\
                  format(np.mean(state[0]), np.std(state[0]),
@@ -83,21 +92,3 @@ class PriceMarket(Game):
     def _calculate_reward(self):
         trade_value = self.trade_value[-1]
         return np.sum(trade_value)
-
-
-class MultipleStepPriceMarket(PriceMarket):
-    def __init__(self, observation_duration, *args, **kargs):
-        self.observation_duration = observation_duration
-        super(MultipleStepPriceMarket, self).__init__(*args, **kargs)
-    def get_oberservation(self):
-        if len(self.view) < self.observation_duration:
-            assert(False),"no observation available"
-        for i in range(self.observation_duration):
-            last_view=self.view[-1-i]
-            last_trade_amount=self.trade_amount[-1-i]
-            last_trade_value=self.trade_value[-1-i]
-            last_price=self.price[-1-i]
-            state_vec=np.concatenate((last_view,last_trade_amount,last_trade_value,last_price),axis=0)
-        return state_vec
-
-

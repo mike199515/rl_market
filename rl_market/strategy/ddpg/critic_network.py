@@ -2,7 +2,7 @@
 import tensorflow as tf
 
 class CriticNetwork(object):
-    def __init__(self, sess, state_size, action_size, model_generator, optimizer, BATCH_SIZE, TAU, LEARNING_RATE):
+    def __init__(self, sess, state_shape, action_size, model_generator, optimizer, BATCH_SIZE, TAU, LEARNING_RATE):
         if optimizer is None:
             optimizer = tf.train.AdamOptimizer
 
@@ -13,8 +13,8 @@ class CriticNetwork(object):
         self.model_generator=model_generator
         self.optimizer = optimizer
         #create model
-        self.model, self.action, self.state = self.model_generator.generate_critic(state_size, action_size, self.optimizer, self.LEARNING_RATE)
-        self.target_model, self.target_action, self.target_state = self.model_generator.generate_critic(state_size, action_size, self.optimizer, self.LEARNING_RATE)
+        self.model, self.action, self.state = self.model_generator.generate_critic(state_shape, action_size, self.optimizer, self.LEARNING_RATE)
+        self.target_model, self.target_action, self.target_state = self.model_generator.generate_critic(state_shape, action_size, self.optimizer, self.LEARNING_RATE)
         self.action_grads = tf.gradients(self.model.output, self.action)
         self.sess.run(tf.global_variables_initializer())
 

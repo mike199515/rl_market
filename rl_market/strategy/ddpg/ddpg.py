@@ -12,11 +12,13 @@ from tqdm import tqdm
 
 class DDPG(Strategy):
     def __init__(self,
-            state_dim,
+            state_shape,
             action_dim,
             actor_generator,
             critic_generator,
             observation_func = None,
+            action_func = None,
+            learning_phase = 1,
             sess = None,
             actor_weight_path = None,
             critic_weight_path = None,
@@ -32,9 +34,10 @@ class DDPG(Strategy):
             random_seed = 42):
 
         super(DDPG, self).__init__()
-        self.state_dim = state_dim
+        self.state_shape = state_shape
         self.action_dim = action_dim
         self.observation_func = observation_func
+        self.action_func = action_func
 
         self.actor_save_path = actor_save_path
         self.critic_save_path = critic_save_path
@@ -45,6 +48,8 @@ class DDPG(Strategy):
         self.LRA = LRA
         self.LRC = LRC
         self.EXPLORE = EXPLORE
+
+        K.set_learning_phase(learning_phase)
 
         np.random.seed(random_seed)
 
@@ -57,8 +62,8 @@ class DDPG(Strategy):
         K.set_session(self.sess)
 
         self.buff = ReplayBuffer(self.BUFFER_SIZE)
-        self.actor = ActorNetwork(self.sess, state_dim, action_dim, actor_generator, None, self.BATCH_SIZE, self.TAU, self.LRA)
-        self.critic =  CriticNetwork(self.sess, state_dim, action_dim, critic_generator, None, self.BATCH_SIZE, self.TAU, self.LRC)
+        self.actor = ActorNetwork(self.sess, state_shape, action_dim, actor_generator, None, self.BATCH_SIZE, self.TAU, self.LRA)
+        self.critic =  CriticNetwork(self.sess, state_shape, action_dim, critic_generator, None, self.BATCH_SIZE, self.TAU, self.LRC)
         if actor_weight_path is not None:
             self.actor.model.load_weights(actor_weight_path)
             self.actor.target_model.load_weights(actor_weight_path)
@@ -75,7 +80,7 @@ class DDPG(Strategy):
         epsilon = 1.
         total_step = 0
         for episode in range(nr_episode):
-            game.reset()
+            game.reset(hard = True)
             observation = game.get_observation() # should be a numpy array
             state = self._get_state(observation)
             total_reward = 0.
@@ -88,7 +93,8 @@ class DDPG(Strategy):
 
                 #update state & show stats
                 state = new_state
-                #print("Episode {} Step {} Reward {} Loss {}".format(episode,step,reward,loss))
+                if step % 10 == 0:
+                    print("Episode {} Step {} Reward {:.3} Loss {:.3}".format(episode,step,reward,loss))
                 total_reward += reward
                 total_loss +=loss
                 total_step += 1
@@ -109,8 +115,8 @@ class DDPG(Strategy):
         #given observation, get action
         observation = game.get_observation()
         state = self._get_state(observation)
-        action = self.actor.model.predict(state[np.newaxis,:])[0]
-        return action
+        action_encoding = self.actor.model.predict([state[np.newaxis,:],0])[0]
+        return self._get_action(action_encoding)
 
     def _get_state(self, observation):
         # potential for observation conversion here
@@ -118,12 +124,18 @@ class DDPG(Strategy):
             return observation
         return self.observation_func(observation)
 
+    def _get_action(self, action_encoding):
+        if self.action_func is None:
+            return action_encoding
+        return self.action_func(action_encoding)
+
     def _perform_action(self, game, state, epsilon):
-        action = self.actor.model.predict(state[np.newaxis, :])[0]
+        action_encoding = self.actor.model.predict([state[np.newaxis, :]])[0]
         #exploration
         for i in range(self.action_dim):
-            action[i] += max(epsilon,0) * self._get_noise(action[i])
+            action_encoding[i] += max(epsilon,0) * self._get_noise(action_encoding[i])
 
+        action = self._get_action(action_encoding)
         reward, done = game.step(action) # NOTE: inside game, it will normalize action if required
         new_observation = game.get_observation()
         new_state = self._get_state(new_observation)
@@ -148,8 +160,8 @@ class DDPG(Strategy):
                 y_t[k] = rewards[k] + self.GAMMA * target_q_values[k]
 
         # update actor & critic
-        loss = self.critic.model.train_on_batch([states,actions], y_t)
-        action_for_grad = self.actor.model.predict(states)
+        loss = self.critic.model.train_on_batch([states, actions], y_t)
+        action_for_grad = self.actor.model.predict([states])
         grads = self.critic.get_gradient(states, action_for_grad)
         self.actor.train(states, grads)
         #update target networks

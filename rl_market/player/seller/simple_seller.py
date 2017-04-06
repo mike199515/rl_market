@@ -4,7 +4,8 @@ import numpy as np
 class SimpleSeller(Seller):
     def __init__(self, quality_sampler, cost_sampler, price_sampler,
             noise_sampler,
-            discount_factor = 0.95
+            discount_factor = 0.95,
+			max_trade_history = 20,
             ):
         self.quality_sampler=quality_sampler
         self.cost_sampler=cost_sampler
@@ -12,7 +13,8 @@ class SimpleSeller(Seller):
         self.noise_sampler=noise_sampler
 
         self.discount_factor = discount_factor
-
+		sel.max_trade_history = max_trade_history
+		
         self.reset(hard = True)
 
     def reset(self, hard):
@@ -29,7 +31,7 @@ class SimpleSeller(Seller):
         last_trade_amount = game.trade_amount[-1][index]
         last_profit = (last_price - self.cost) * last_trade_amount
         self.trade_history.append((last_price, last_profit))
-        if len(self.trade_history)> 20:
+        if len(self.trade_history)> self.max_trade_history:
             self.trade_history=self.trade_history[1:]
         #find the price most successful and sample from that range
         best_price, best_profit = None, 0

@@ -3,7 +3,7 @@ import tensorflow as tf
 import keras.backend as K
 
 class ActorNetwork(object):
-    def __init__(self, sess, state_size, action_size, model_generator, optimizer, BATCH_SIZE, TAU, LEARNING_RATE):
+    def __init__(self, sess, state_shape, action_size, model_generator, optimizer, BATCH_SIZE, TAU, LEARNING_RATE):
         if optimizer is None:
             optimizer = tf.train.AdamOptimizer
 
@@ -12,10 +12,10 @@ class ActorNetwork(object):
         self.TAU = TAU
         self.LEARNING_RATE = LEARNING_RATE
         K.set_session(sess)
-        print("state size={}, action size={}".format(state_size,action_size))
+        print("state shape={}, action size={}".format(state_shape,action_size))
         #create model
-        self.model, self.weights, self.state = model_generator.generate_actor(state_size,action_size)
-        self.target_model, self.target_weights, self.target_state = model_generator.generate_actor(state_size,action_size)
+        self.model, self.weights, self.state = model_generator.generate_actor(state_shape,action_size)
+        self.target_model, self.target_weights, self.target_state = model_generator.generate_actor(state_shape,action_size)
         self.action_grads = tf.placeholder(tf.float32,[None, action_size])
         self.params_grad = tf.gradients(self.model.output, self.weights, -self.action_grads)
         self.optimize = optimizer(LEARNING_RATE).apply_gradients(zip(self.params_grad, self.weights))
