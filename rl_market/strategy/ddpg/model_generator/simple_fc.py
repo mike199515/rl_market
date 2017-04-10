@@ -25,7 +25,7 @@ class SimpleFCCritic(ModelGenerator):
         h3 = Dense(self.h2, activation="relu")(h2)
         value = Dense(action_size, activation="linear")(h3)
 
-        model = Model(input=[state,action], output=value)
+        model = Model(inputs=[state,action], outputs=[value])
         opt = optimizer(LEARNING_RATE)
         model.compile(loss="mse", optimizer=opt)
         return model, action, state
@@ -46,5 +46,5 @@ class SimpleFCAction(ModelGenerator):
         h2 = Dense(self.h2, activation="relu")(h1)
         out = Dense(action_size, activation="softmax")(h2)
 
-        model = Model(input=[inp], output=out)
+        model = Model(inputs=[inp], outputs=[out])
         return model, model.trainable_weights, inp

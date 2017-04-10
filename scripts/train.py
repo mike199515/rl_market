@@ -1,6 +1,6 @@
 from rl_market.strategy.ddpg.ddpg import DDPG
 from rl_market.strategy.ddpg.model_generator.simple_fc import SimpleFCAction, SimpleFCCritic
-from rl_market.strategy.ddpg.model_generator.simple_fc import GRUModel
+#from rl_market.strategy.ddpg.model_generator.simple_fc import GRUModel
 from rl_market.game.price_market import PriceMarket
 from rl_market.player.buyer.simple_buyer import SimpleBuyer
 from rl_market.player.seller.simple_seller import SimpleSeller

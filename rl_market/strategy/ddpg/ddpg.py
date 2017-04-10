@@ -172,4 +172,4 @@ class DDPG(Strategy):
     def _get_noise(self, action):
         #TODO: test various noises
 
-        return OU.function(0., 0., 1., 0.005)
+        return OU().function(0., 0., 1., 0.005)

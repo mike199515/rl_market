@@ -13,8 +13,8 @@ class SimpleSeller(Seller):
         self.noise_sampler=noise_sampler
 
         self.discount_factor = discount_factor
-		sel.max_trade_history = max_trade_history
-		
+        self.max_trade_history = max_trade_history
+
         self.reset(hard = True)
 
     def reset(self, hard):
