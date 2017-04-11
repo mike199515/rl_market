@@ -42,10 +42,12 @@ class PriceMarket(Game):
             last_trade_amount=self.trade_amount[-1-i]
             last_trade_value=self.trade_value[-1-i]
             last_price=self.price[-1-i]
+            #print(last_view, last_trade_amount, last_trade_value, last_price)
             state = np.array((last_view,last_trade_amount,last_trade_value,last_price))
             states.append(state)
 
         states = np.array(states)
+
         return states
 
     def get_observation_string(self):
@@ -59,7 +61,9 @@ class PriceMarket(Game):
         return ret
 
     def step(self, weights):
+        assert(len(weights.shape)==1)
         assert(weights.shape[0] == len(self.sellers)),"weight mismatch"
+        #print("weight:",weights)
         #get seller's price & quality
         nr_sellers = len(self.sellers)
 

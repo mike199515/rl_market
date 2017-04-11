@@ -14,8 +14,7 @@ class DDPG(Strategy):
     def __init__(self,
             state_shape,
             action_dim,
-            actor_generator,
-            critic_generator,
+            generator,
             observation_func = None,
             action_func = None,
             learning_phase = 1,
@@ -62,8 +61,8 @@ class DDPG(Strategy):
         K.set_session(self.sess)
 
         self.buff = ReplayBuffer(self.BUFFER_SIZE)
-        self.actor = ActorNetwork(self.sess, state_shape, action_dim, actor_generator, None, self.BATCH_SIZE, self.TAU, self.LRA)
-        self.critic =  CriticNetwork(self.sess, state_shape, action_dim, critic_generator, None, self.BATCH_SIZE, self.TAU, self.LRC)
+        self.actor = ActorNetwork(self.sess, state_shape, action_dim, generator, None, self.BATCH_SIZE, self.TAU, self.LRA)
+        self.critic =  CriticNetwork(self.sess, state_shape, action_dim, generator, None, self.BATCH_SIZE, self.TAU, self.LRC)
         if actor_weight_path is not None:
             self.actor.model.load_weights(actor_weight_path)
             self.actor.target_model.load_weights(actor_weight_path)
@@ -94,7 +93,8 @@ class DDPG(Strategy):
                 #update state & show stats
                 state = new_state
                 if step % 10 == 0:
-                    print("Episode {} Step {} Reward {:.3} Loss {:.3}".format(episode,step,reward,loss))
+                    pass
+                    #print("Episode {} Step {} Reward {:.3} Loss {:.3}".format(episode,step,reward,loss))
                 total_reward += reward
                 total_loss +=loss
                 total_step += 1
@@ -106,16 +106,16 @@ class DDPG(Strategy):
                     self.actor.model.save_weights(self.actor_save_path, overwrite=True)
                 if self.critic_save_path is not None:
                     self.critic.model.save_weights(self.critic_save_path, overwrite=True)
-            print("total reward @{}-th episode : {}".format(episode, total_reward))
-            print("total loss : {}".format(total_loss))
-            print("total step : {}".format(total_step))
+            log.info("total reward @{}-th episode : {}".format(episode, total_reward))
+            log.info("total loss : {}".format(total_loss))
+            log.info("total step : {}".format(total_step))
         print("train finish")
 
     def play(self, game):
         #given observation, get action
         observation = game.get_observation()
         state = self._get_state(observation)
-        action_encoding = self.actor.model.predict([state[np.newaxis,:],0])[0]
+        action_encoding = self.actor.model.predict([state[np.newaxis,:]])[0]
         return self._get_action(action_encoding)
 
     def _get_state(self, observation):
@@ -151,13 +151,13 @@ class DDPG(Strategy):
         dones = np.asarray([e[4] for e in batch])
 
         #use critic network to estimate y_t
-        y_t = np.zeros_like(actions)
+        y_t = np.zeros((len(batch),1))
         target_q_values = self.critic.target_model.predict([new_states,self.actor.target_model.predict(new_states)])
         for k in range(len(batch)):
             if dones[k]:
-                y_t[k] = rewards[k]
+                y_t[k][0] = rewards[k]
             else:
-                y_t[k] = rewards[k] + self.GAMMA * target_q_values[k]
+                y_t[k][0] = rewards[k] + self.GAMMA * target_q_values[k]
 
         # update actor & critic
         loss = self.critic.model.train_on_batch([states, actions], y_t)

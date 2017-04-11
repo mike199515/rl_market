@@ -1,27 +1,27 @@
-from .base import Seller
+from .simple_seller import SimpleSeller
 import numpy as np
 
 class ComparativeSeller(SimpleSeller):
     def __init__(self, *args, **kargs):
-        super(self, ComparativeSeller).__init__(*args, **kargs)
-    
+        super(ComparativeSeller, self).__init__(*args, **kargs)
+
     def decide_price(self, game, index):
         nr_history = game.duration
-        
+
         if nr_history <=2:
             return self.price_sampler.sample()
-        
-        
+
+
         # pick up the most profitable index instead
         best_price = None
         best_profit = -float("inf")
         for price, trade_amount in zip(game.price[-1], game.trade_amount[-1]):
-            profit = (last_price - self.cost) * last_trade_amount
+            profit = (price - self.cost) * trade_amount
             if profit > best_profit:
                 best_price = price
                 best_profit = profit
         self.trade_history.append((best_price, best_profit))
-        
+
         if len(self.trade_history)> self.max_trade_history:
             self.trade_history=self.trade_history[1:]
         #find the price most successful and sample from that range

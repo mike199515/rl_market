@@ -4,7 +4,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 import keras.backend as K
 from .base import ModelGenerator
-class SimpleFCCritic(ModelGenerator):
+class SimpleFC(ModelGenerator):
     def __init__(self, h1=300, h2=600):
         self.h1=h1
         self.h2=h2
@@ -23,18 +23,12 @@ class SimpleFCCritic(ModelGenerator):
         h2 = merge([h1,a1],mode="sum")
 
         h3 = Dense(self.h2, activation="relu")(h2)
-        value = Dense(action_size, activation="linear")(h3)
+        value = Dense(1, activation="linear")(h3)
 
         model = Model(inputs=[state,action], outputs=[value])
         opt = optimizer(LEARNING_RATE)
         model.compile(loss="mse", optimizer=opt)
         return model, action, state
-
-
-class SimpleFCAction(ModelGenerator):
-    def __init__(self, h1=300, h2=600):
-        self.h1=h1
-        self.h2=h2
 
     def generate_actor(self, state_shape, action_size):
 
