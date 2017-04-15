@@ -4,6 +4,9 @@ class DirectOptimize(Strategy):
     def __init__(self, LAMBDA = 10):
         self.LAMBDA = LAMBDA
 
+    def __repr(self):
+        return "DirectOptimize"
+
     def play(self, game):
         state = game.get_observation()
         #(t, 4, nr_seller)

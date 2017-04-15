@@ -17,6 +17,9 @@ class SimpleSeller(Seller):
 
         self.reset(hard = True)
 
+    def __repr__(self):
+        return "Simple Seller"
+
     def reset(self, hard):
         if hard:
             self.quality = self.quality_sampler.sample()

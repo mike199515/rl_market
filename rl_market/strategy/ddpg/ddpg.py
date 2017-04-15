@@ -4,7 +4,6 @@ from keras import backend as K
 from .replay_buffer import ReplayBuffer
 from .actor_network import ActorNetwork
 from .critic_network import CriticNetwork
-from .OU import OU
 from ..base import Strategy
 import rl_market.utils.logging_conf
 import logging as log
@@ -15,9 +14,9 @@ class DDPG(Strategy):
             state_shape,
             action_dim,
             generator,
+            noise_func,
             observation_func = None,
             action_func = None,
-            noise_func = None,
             learning_phase = 1,
             sess = None,
             actor_weight_path = None,
@@ -25,17 +24,18 @@ class DDPG(Strategy):
             actor_save_path = None,
             critic_save_path = None,
             BUFFER_SIZE = 100000,
-            BATCH_SIZE = 32,
+            BATCH_SIZE = 64,
             GAMMA = 0.99,           # reward discount factor
             TAU = 0.001,            # target network shift rate
-            LRA = 0.0001,           # learning rate for actor
-            LRC = 0.001,            # learning rate for critic
+            LRA = 0.001,           # learning rate for actor
+            LRC = 0.000001,            # learning rate for critic
             EXPLORE = 100000.,      # explore factor
             random_seed = 42):
 
         super(DDPG, self).__init__()
         self.state_shape = state_shape
         self.action_dim = action_dim
+        self.noise_func = noise_func
         self.observation_func = observation_func
         self.action_func = action_func
 
@@ -73,7 +73,8 @@ class DDPG(Strategy):
             self.critic.target_model.load_weights(critic_weight_path)
             print("critic model weight loaded from {}".format(critic_weight_path))
 
-
+    def __repr__(self):
+        return "DDPG"
 
     def train(self, game, nr_episode = 1000, nr_steps = 100000):
         # NOTE: interact with the stateful game object
@@ -133,7 +134,7 @@ class DDPG(Strategy):
         action_encoding = self.actor.model.predict([state[np.newaxis, :]])[0]
         #exploration
         for i in range(self.action_dim):
-            action_encoding[i] += max(epsilon,0) * self._get_noise(action_encoding[i])
+            action_encoding[i] += max(epsilon,0) * self.noise_func(action_encoding[i])
 
         action = self._get_action(action_encoding)
         reward, done = game.step(action) # NOTE: inside game, it will normalize action if required
@@ -168,8 +169,3 @@ class DDPG(Strategy):
         self.actor.train_target_network()
         self.critic.train_target_network()
         return loss
-
-    def _get_noise(self, action):
-        #TODO: test various noises
-
-        return OU().function(0., 0., 1., 0.005)

@@ -8,6 +8,9 @@ class TrickySeller(SimpleSeller):
         self.trick_prob = trick_prob
         super(TrickySeller, self).__init__(*args, **kargs)
 
+    def __repr__(self):
+        return "Tricky Seller"
+
     def decide_price(self, game, index):
         nr_history = game.duration
 

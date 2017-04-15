@@ -5,6 +5,9 @@ class ComparativeSeller(SimpleSeller):
     def __init__(self, *args, **kargs):
         super(ComparativeSeller, self).__init__(*args, **kargs)
 
+    def __repr__(self):
+        return "Comparative Seller"
+
     def decide_price(self, game, index):
         nr_history = game.duration
 
