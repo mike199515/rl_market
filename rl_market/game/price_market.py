@@ -1,5 +1,10 @@
 from .base import Game
 import numpy as np
+import rl_market.utils.logging_conf
+import logging as log
+from rl_market.strategy.rule_based_distribute.uniform_distribute import UniformDistribute
+from rl_market.strategy.rule_based_distribute.random_distribute import RandomDistribute
+
 
 class PriceMarket(Game):
 
@@ -7,6 +12,8 @@ class PriceMarket(Game):
             sellers,
             buyer,
             max_duration,
+            enable_score = False,
+            init_strategy = None,
             nr_observation = 1):
         super(PriceMarket,self).__init__()
 
@@ -14,10 +21,22 @@ class PriceMarket(Game):
         self.sellers = sellers
         self.buyer = buyer
         self.nr_observation = nr_observation
-        self.reset()
-        pass
+        self.enable_score = enable_score
+        if init_strategy is None:
+            if self.enable_score:
+                self.init_strategy = RandomDistribute()
+            else:
+                self.init_strategy = UniformDistribute()
+        else:
+            self.init_strategy = init_strategy
+        log.info("init strategy {}".format(self.init_strategy))
+        self.reset(hard = True)
+
+    def __repr__(self):
+        return "PriceMarket:max_duration={}, nr_observation={}, enable_score={}, init_strategy={}".format(self.max_duration,self.nr_observation, self.enable_score, self.init_strategy)
 
     def reset(self, hard = False):
+        log.info("hard_reset={}".format(hard))
         self.state_shape = (self.nr_observation, 4, len(self.sellers))
         self.action_dim = len(self.sellers)
         self.duration = 0
@@ -31,7 +50,7 @@ class PriceMarket(Game):
         self.buyer.reset(hard)
         #we step for nr_observation round for observation to be valid
         for i in range(self.nr_observation):
-            self.step(np.ones(len(self.sellers)))
+            self.step(self.init_strategy.play(self))
 
     def get_observation(self):
         if len(self.view) < self.nr_observation:
@@ -60,6 +79,12 @@ class PriceMarket(Game):
                         np.mean(state[3]), np.std(state[3]))
         return ret
 
+    def get_weight_from_score(self, scores):
+        rank = np.argsort(np.argsort(-scores))
+        exp_rank = np.exp(-rank)
+        exp_rank/= np.sum(exp_rank)
+        return exp_rank
+
     def step(self, weights):
         assert(len(weights.shape)==1)
         assert(weights.shape[0] == len(self.sellers)),"weight mismatch"
@@ -74,9 +99,11 @@ class PriceMarket(Game):
         quality = np.zeros((nr_sellers,))
         for i, seller in enumerate(self.sellers):
             quality[i] = seller.get_quality(self, i)
-
-        weights = np.maximum(weights,0)
-        weights = weights/np.sum(weights) # normalize
+        if self.enable_score:
+            weights = self.get_weight_from_score(weights)
+        else:
+            weights = np.maximum(weights,0)
+            weights = weights/np.sum(weights) # normalize
         # calculate views
         view = weights[:]
         # calculate trade

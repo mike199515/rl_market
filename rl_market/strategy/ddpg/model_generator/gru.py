@@ -28,7 +28,7 @@ class ReduceSum(Layer):
         return out_shape
 
 class GRUModel(ModelGenerator):
-    def __init__(self, bh = 64, ih = 64, eh = 64):
+    def __init__(self, bh = 256, ih = 64, eh = 256):
         self.bh = bh
         self.ih = ih
         self.eh = eh
@@ -42,8 +42,8 @@ class GRUModel(ModelGenerator):
 
     def generate_eval_model(self, nr_feature):
         inp = Input(shape = (nr_feature,))
-        dense_feat = Dense(self.eh)(inp) #(batch, ih)
-        out = Dense(1)(dense_feat)
+        dense_feat = Dense(self.eh, activation="relu")(inp) #(batch, ih)
+        out = Dense(1, activation="linear")(dense_feat)
         model = Model(inputs=[inp], outputs=[out])
         return model
 

@@ -3,6 +3,7 @@ from rl_market.strategy.ddpg.ddpg import DDPG
 from rl_market.strategy.rule_based_distribute.random_distribute import RandomDistribute
 from rl_market.strategy.rule_based_distribute.uniform_distribute import UniformDistribute
 from rl_market.strategy.rule_based_distribute.direct_optimize import DirectOptimize
+from rl_market.strategy.rule_based_distribute.ranked_distribute import RankedDistribute
 
 from rl_market.strategy.ddpg.model_generator.simple_fc import SimpleFC
 from rl_market.strategy.ddpg.model_generator.gru import GRUModel
@@ -23,16 +24,29 @@ import argparse
 
 THE_MEANING_OF_LIFE_UNIVERSE_AND_EVERYTHING=42
 
+def spec_str(args, name):
+    if args.ranked:
+        ranked="ranked"
+    else:
+        ranked="distr"
+    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}.hdf5".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked, args.model)
+    return
+
 def observation_func(observation):
     return observation
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("s", help= "the strategy to test")
+    parser.add_argument("--ranked", action = "store_true")
+    parser.add_argument("--duration", type=int, default=1)
     parser.add_argument("--buyer", default="simple")
     parser.add_argument("--seller", default="simple")
+    parser.add_argument("--nr_seller", type=int, default=100)
     parser.add_argument("--train", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--model", default="fc")
+    parser.add_argument("--path", default="../data/")
     args = parser.parse_args()
     if args.model == "fc":
         model_class = SimpleFC
@@ -62,51 +76,60 @@ def main():
     price_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
     noise_sampler = sampler.GaussianSampler(mu = 0., sigma = 0.05/3)
 
-    sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(10)]
+    sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
 
-    log.info("initialize game:PriceMarket")
     log.info("seller:{}".format(seller_class))
-    game = PriceMarket(sellers=sellers,buyer=buyer,nr_observation = 2, max_duration=1000)
-
-    print(game.state_shape)
+    game = PriceMarket(sellers=sellers,buyer=buyer,nr_observation = args.duration, max_duration=1000)
+    log.info("initialize game:{}".format(game))
+    log.info(game.state_shape)
 
     if args.train:
         log.info("start training")
+        if args.resume:
+            actor_weight_path=spec_str(args, "actor")
+            critic_weight_path=spec_str(args, "critic")
+        else:
+            actor_weight_path=None
+            critic_weight_path=None
+
         strategy = DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
                 generator=model_class(),
                 observation_func=observation_func,
-                actor_save_path = "../data/ddpg_actor_{}_{}_{}.hdf5".format(args.buyer,args.seller,args.model),
-                critic_save_path = "../data/ddpg_critic_{}_{}_{}.hdf5".format(args.buyer,args.seller,args.model),
-                #actor_weight_path="../data/ddpg_actor_model.hdf5",
-                #critic_weight_path="../data/ddpg_critic_model.hdf5"
+                actor_save_path = spec_str(args, "actor"),
+                critic_save_path = spec_str(args, "critic"),
+                actor_weight_path=actor_weight_path,
+                critic_weight_path=critic_weight_path
         )
         strategy.train(game, nr_episode = 1000, nr_steps = 1000)
         return
 
-    #log.info("initialize strategy:ddpg")
     if args.s == "uniform":
         strategy = UniformDistribute()
     elif args.s == "random":
         strategy = RandomDistribute()
     elif args.s == "direct":
         strategy = DirectOptimize()
+    elif args.s == "ranked":
+        strategy = RankedDistribute()
     elif args.s == "ddpg":
         strategy = DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
                 generator=model_class(),
                 observation_func=observation_func,
-                actor_weight_path="../data/ddpg_actor_{}_{}_{}.hdf5".format(args.buyer,args.seller,args.model),
-                critic_weight_path="../data/ddpg_critic_{}_{}_{}.hdf5".format(args.buyer,args.seller,args.model),
+                actor_weight_path=spec_str(args, "actor"),
+                critic_weight_path=spec_str(args, "critic")
         )
 
     log.info("start testing {}".format(strategy))
     for epoch in range(1000):
         total_reward = 0
-        game.reset(hard=False)
-        for step in tqdm(range(1000)):
+        game.reset(hard=True)
+        pbar = tqdm(range(1000))
+        for step in pbar:
             #print("=========step {}=========\n{}\n".format(step,game.get_observation_string()))
             action =  strategy.play(game)
             reward, done = game.step(action)
             total_reward += reward
+            pbar.set_description("s{} R{:3}".format(step, reward))
             if done:
                 break
         log.info("total reward@{}-th episode: {}".format(epoch, total_reward))

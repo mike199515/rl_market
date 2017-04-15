@@ -6,7 +6,6 @@ import numpy as np
 class TrickySeller(SimpleSeller):
     def __init__(self, trick_prob = 0.1, *args, **kargs):
         self.trick_prob = trick_prob
-        print(args, kargs)
         super(TrickySeller, self).__init__(*args, **kargs)
 
     def decide_price(self, game, index):

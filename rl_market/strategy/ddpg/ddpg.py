@@ -17,6 +17,7 @@ class DDPG(Strategy):
             generator,
             observation_func = None,
             action_func = None,
+            noise_func = None,
             learning_phase = 1,
             sess = None,
             actor_weight_path = None,
@@ -74,7 +75,7 @@ class DDPG(Strategy):
 
 
 
-    def train(self, game, nr_episode = 2000, nr_steps = 100000):
+    def train(self, game, nr_episode = 1000, nr_steps = 100000):
         # NOTE: interact with the stateful game object
         epsilon = 1.
         total_step = 0
@@ -84,7 +85,8 @@ class DDPG(Strategy):
             state = self._get_state(observation)
             total_reward = 0.
             total_loss= 0.
-            for step in tqdm(range(nr_steps)):
+            pbar = tqdm(range(nr_steps))
+            for step in pbar:
                 epsilon -= 1/self.EXPLORE
                 action, new_state, reward, done = self._perform_action(game, state, epsilon)
                 self.buff.add((state, action, reward, new_state, done))
@@ -92,9 +94,7 @@ class DDPG(Strategy):
 
                 #update state & show stats
                 state = new_state
-                if step % 10 == 0:
-                    pass
-                    #print("Episode {} Step {} Reward {:.3} Loss {:.3}".format(episode,step,reward,loss))
+                pbar.set_description("s{} R{:.2} L{:.2}".format(step, reward, loss))
                 total_reward += reward
                 total_loss +=loss
                 total_step += 1
@@ -109,7 +109,7 @@ class DDPG(Strategy):
             log.info("total reward @{}-th episode : {}".format(episode, total_reward))
             log.info("total loss : {}".format(total_loss))
             log.info("total step : {}".format(total_step))
-        print("train finish")
+        log.info("train finish")
 
     def play(self, game):
         #given observation, get action
