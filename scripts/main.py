@@ -4,6 +4,7 @@ from rl_market.strategy.rule_based_distribute.random_distribute import RandomDis
 from rl_market.strategy.rule_based_distribute.uniform_distribute import UniformDistribute
 from rl_market.strategy.rule_based_distribute.direct_optimize import DirectOptimize
 from rl_market.strategy.rule_based_distribute.ranked_distribute import RankedDistribute
+from rl_market.strategy.rule_based_distribute.accum_optimize import AccumOptimize
 
 from rl_market.strategy.ddpg.model_generator.simple_fc import SimpleFC
 from rl_market.strategy.ddpg.model_generator.gru import GRUModel
@@ -14,6 +15,7 @@ from rl_market.player.buyer.history_buyer import HistoryBuyer
 from rl_market.player.seller.comparative_seller import ComparativeSeller
 from rl_market.player.seller.tricky_seller import TrickySeller
 from rl_market.player.seller.simple_seller import SimpleSeller
+from rl_market.player.seller.ddpg_seller import DDPGSeller
 
 import rl_market.utils.logging_conf
 import rl_market.utils.sampler as sampler
@@ -24,6 +26,14 @@ import numpy as np
 import argparse
 
 THE_MEANING_OF_LIFE_UNIVERSE_AND_EVERYTHING=42
+
+strategy_map={
+    "uniform":UniformDistribute,
+    "random":RandomDistribute,
+    "direct":DirectOptimize,
+    "ranked":RankedDistribute,
+    "accum":AccumOptimize,
+}
 
 def spec_str(args, name):
     if args.ranked:
@@ -37,12 +47,19 @@ def noise_func(action):
     return  0.005 * np.random.randn(1)
 
 def sorted_observation_func(observation):
-    #print(observation)
-    #assert(False)
-    return observation
+    neg_trade_value = -np.array(observation[-1][2])
+    order = neg_trade_value.argsort()
+    ranks = order.argsort()
+    #print(observation[-1][2])
+    #print(ranks)
+    sted = np.array([[observation[-1][i][order] for i in range(4)]])
+    #print(sted.shape)
+    #print(sted[-1][1][ranks]-observation[-1][1])
+    return sted, ranks
 
-def sorted_action_func(action_encoding):
-    return action_encoding
+def sorted_action_func(action_encoding, args):
+    #print(action_encoding, args)
+    return action_encoding[args]
 
 
 def main():
@@ -59,6 +76,7 @@ def main():
     parser.add_argument("--path", default="../data/")
 
     parser.add_argument("--sorted",action="store_true")
+    parser.add_argument("--pretrain",default="")
 
     args = parser.parse_args()
     if args.model == "fc":
@@ -83,6 +101,13 @@ def main():
         seller_class=ComparativeSeller
     else:
         assert(False),"invalid seller type"
+
+    if args.sorted:
+        observation_func=sorted_observation_func
+        action_func=sorted_action_func
+    else:
+        observation_func=None
+        action_func=None
 
     # ================ end of parse args ================
 
@@ -122,19 +147,14 @@ def main():
                 actor_weight_path=actor_weight_path,
                 critic_weight_path=critic_weight_path
         )
+        if args.pretrain !="":
+            log.info("pretrain enabled with strategy {}".format(args.pretrain))
+            pretrain_strategy = strategy_map[args.pretrain]()
+            strategy.pretrain(game, pretrain_strategy, nr_episode = 1)
         strategy.train(game, nr_episode = 1000, nr_steps = 1000)
         return
-
-    if args.s == "uniform":
-        strategy = UniformDistribute()
-    elif args.s == "random":
-        strategy = RandomDistribute()
-    elif args.s == "direct":
-        strategy = DirectOptimize()
-    elif args.s == "ranked":
-        strategy = RankedDistribute()
-    elif args.s == "ddpg":
-        strategy = DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
+    if args.s == "ddpg":
+        DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
                 generator=model_class(),
                 observation_func=observation_func,
                 action_func=action_func,
@@ -143,12 +163,14 @@ def main():
                 critic_weight_path=spec_str(args, "critic")
         )
     else:
-        assert(False),"invalid strategy"
+        assert(args.s in strategy_map)
+        strategy = strategy_map[args.s]()
 
     log.info("start testing {}".format(strategy))
     for epoch in range(1000):
         total_reward = 0
         game.reset(hard=True)
+        strategy.reset()
         pbar = tqdm(range(1000))
         for step in pbar:
             #print("=========step {}=========\n{}\n".format(step,game.get_observation_string()))

@@ -3,9 +3,12 @@ import numpy as np
 class DirectOptimize(Strategy):
     def __init__(self, LAMBDA = 10):
         self.LAMBDA = LAMBDA
+        self.EPSILON = 1e-9
+    def __repr__(self):
+        return "Direct Optimize"
 
-    def __repr(self):
-        return "DirectOptimize"
+    def reset(self):
+        pass
 
     def play(self, game):
         state = game.get_observation()
@@ -17,5 +20,5 @@ class DirectOptimize(Strategy):
 
         # we use view's value as baseline
         # normalize trade_value and use it to update weight
-        weight = view + self.LAMBDA * trade_value / np.sum(trade_value)
+        weight = self.EPSILON + self.LAMBDA * trade_value
         return weight

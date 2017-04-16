@@ -24,11 +24,11 @@ class DDPG(Strategy):
             actor_save_path = None,
             critic_save_path = None,
             BUFFER_SIZE = 100000,
-            BATCH_SIZE = 64,
+            BATCH_SIZE = 32,
             GAMMA = 0.99,           # reward discount factor
             TAU = 0.001,            # target network shift rate
-            LRA = 0.001,           # learning rate for actor
-            LRC = 0.000001,            # learning rate for critic
+            LRA = 0.0001,           # learning rate for actor
+            LRC = 0.00001,            # learning rate for critic
             EXPLORE = 100000.,      # explore factor
             random_seed = 42):
 
@@ -76,26 +76,51 @@ class DDPG(Strategy):
     def __repr__(self):
         return "DDPG"
 
+    def pretrain(self, game, strategy, action_encoder = None, nr_episode = 10, nr_steps =1000):
+        if action_encoder is None:
+            log.warning("Make sure action is the same as action_encoding")
+            def identity_func(inp, args):
+                return inp
+            action_encoder = identity_func
+
+        for episode in range(nr_episode):
+            game.reset(hard=True)
+            pbar = tqdm(range(nr_steps))
+            state, args = self._get_state(game.get_observation())
+            for step in pbar:
+                action = strategy.play(game)
+                action_encoding = action_encoder(action, args)
+                reward, done = game.step(action)
+                new_state, new_args = self._get_state(game.get_observation())
+                self.buff.add((state, action_encoding, reward, new_state, done))
+                loss = self._batch_update()
+                pbar.set_description("s{} R{:.3} L{:.3}".format(step, reward, loss))
+                state, args = new_state, new_args
+                if done:
+                    break
+
     def train(self, game, nr_episode = 1000, nr_steps = 100000):
         # NOTE: interact with the stateful game object
+        if len(self.buff.buff)>0:
+            log.info("{} experience detected in buffer.".format(len(self.buff.buff)))
         epsilon = 1.
         total_step = 0
         for episode in range(nr_episode):
             game.reset(hard = True)
             observation = game.get_observation() # should be a numpy array
-            state = self._get_state(observation)
+            state, args = self._get_state(observation)
             total_reward = 0.
             total_loss= 0.
             pbar = tqdm(range(nr_steps))
             for step in pbar:
                 epsilon -= 1/self.EXPLORE
-                action, new_state, reward, done = self._perform_action(game, state, epsilon)
-                self.buff.add((state, action, reward, new_state, done))
+                action_encoding, new_state, reward, done, new_args = self._perform_action(game, state, epsilon, args)
+                self.buff.add((state, action_encoding, reward, new_state, done))
                 loss = self._batch_update()
 
                 #update state & show stats
-                state = new_state
-                pbar.set_description("s{} R{:.2} L{:.2}".format(step, reward, loss))
+                state, args = new_state, new_args
+                pbar.set_description("s{} R{:.3} L{:.3}".format(step, reward, loss))
                 total_reward += reward
                 total_loss +=loss
                 total_step += 1
@@ -112,6 +137,9 @@ class DDPG(Strategy):
             log.info("total step : {}".format(total_step))
         log.info("train finish")
 
+    def reset(self):
+        pass
+
     def play(self, game):
         #given observation, get action
         observation = game.get_observation()
@@ -122,31 +150,31 @@ class DDPG(Strategy):
     def _get_state(self, observation):
         # potential for observation conversion here
         if self.observation_func is None:
-            return observation
+            return observation, None
         return self.observation_func(observation)
 
-    def _get_action(self, action_encoding):
+    def _get_action(self, action_encoding, args):
         if self.action_func is None:
             return action_encoding
-        return self.action_func(action_encoding)
+        return self.action_func(action_encoding, args)
 
-    def _perform_action(self, game, state, epsilon):
+    def _perform_action(self, game, state, epsilon, args):
         action_encoding = self.actor.model.predict([state[np.newaxis, :]])[0]
         #exploration
         for i in range(self.action_dim):
             action_encoding[i] += max(epsilon,0) * self.noise_func(action_encoding[i])
 
-        action = self._get_action(action_encoding)
+        action = self._get_action(action_encoding, args)
         reward, done = game.step(action) # NOTE: inside game, it will normalize action if required
         new_observation = game.get_observation()
-        new_state = self._get_state(new_observation)
-        return action, new_state, reward, done
+        new_state, new_args = self._get_state(new_observation)
+        return action_encoding, new_state, reward, done, new_args
 
 
     def _batch_update(self):
         batch = self.buff.get_batch(self.BATCH_SIZE)
         states = np.asarray([e[0] for e in batch])
-        actions = np.asarray([e[1] for e in batch])
+        action_encodings = np.asarray([e[1] for e in batch])
         rewards = np.asarray([e[2] for e in batch])
         new_states = np.asarray([e[3] for e in batch])
         dones = np.asarray([e[4] for e in batch])
@@ -161,7 +189,7 @@ class DDPG(Strategy):
                 y_t[k][0] = rewards[k] + self.GAMMA * target_q_values[k]
 
         # update actor & critic
-        loss = self.critic.model.train_on_batch([states, actions], y_t)
+        loss = self.critic.model.train_on_batch([states, action_encodings], y_t)
         action_for_grad = self.actor.model.predict([states])
         grads = self.critic.get_gradient(states, action_for_grad)
         self.actor.train(states, grads)
