@@ -36,12 +36,15 @@ strategy_map={
 }
 
 def spec_str(args, name):
+    if args.sorted:
+        sorted="sorted"
+    else:
+        sorted="none"
     if args.ranked:
         ranked="ranked"
     else:
         ranked="distr"
-    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}.hdf5".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked, args.model)
-    return
+    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}.hdf5".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted, args.model)
 
 def noise_func(action):
     return  0.005 * np.random.randn(1)
@@ -60,6 +63,10 @@ def sorted_observation_func(observation):
 def sorted_action_func(action_encoding, args):
     #print(action_encoding, args)
     return action_encoding[args]
+
+def sorted_action_encoder(action, args):
+    reverse_order = args.argsort()
+    return action[reverse_order]
 
 
 def main():
@@ -150,11 +157,16 @@ def main():
         if args.pretrain !="":
             log.info("pretrain enabled with strategy {}".format(args.pretrain))
             pretrain_strategy = strategy_map[args.pretrain]()
-            strategy.pretrain(game, pretrain_strategy, nr_episode = 1)
+            if args.sorted:
+                action_encoder=sorted_action_encoder
+            else:
+                action_encoder=None
+            strategy.pretrain(game, pretrain_strategy, action_encoder=action_encoder, nr_episode = 1)
+
         strategy.train(game, nr_episode = 1000, nr_steps = 1000)
         return
     if args.s == "ddpg":
-        DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
+        strategy = DDPG(state_shape = game.state_shape, action_dim = game.action_dim,
                 generator=model_class(),
                 observation_func=observation_func,
                 action_func=action_func,
