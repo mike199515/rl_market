@@ -11,6 +11,8 @@ class RankedDistribute(Strategy):
     def __repr__(self):
         return "Ranked Distribute"
 
+    def reset(self):
+        pass
 
     def play(self, game):
         state = game.get_observation()

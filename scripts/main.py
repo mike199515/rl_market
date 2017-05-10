@@ -1,10 +1,13 @@
 from rl_market.strategy.ddpg.ddpg import DDPG
 
+from rl_market.strategy.rule_based_distribute.greedy import Greedy
 from rl_market.strategy.rule_based_distribute.random_distribute import RandomDistribute
 from rl_market.strategy.rule_based_distribute.uniform_distribute import UniformDistribute
 from rl_market.strategy.rule_based_distribute.direct_optimize import DirectOptimize
 from rl_market.strategy.rule_based_distribute.ranked_distribute import RankedDistribute
 from rl_market.strategy.rule_based_distribute.accum_optimize import AccumOptimize
+from rl_market.strategy.rule_based_distribute.UCB1 import UCB1
+from rl_market.strategy.rule_based_distribute.epsilon_greedy import EpsilonGreedy
 
 from rl_market.strategy.ddpg.model_generator.simple_fc import SimpleFC
 from rl_market.strategy.ddpg.model_generator.gru import GRUModel
@@ -28,11 +31,13 @@ import argparse
 THE_MEANING_OF_LIFE_UNIVERSE_AND_EVERYTHING=42
 
 strategy_map={
+    "greedy":Greedy,
     "uniform":UniformDistribute,
     "random":RandomDistribute,
     "direct":DirectOptimize,
-    "ranked":RankedDistribute,
     "accum":AccumOptimize,
+    "UCB1": UCB1,
+    "egreedy":EpsilonGreedy
 }
 
 def spec_str(args, name):
@@ -44,7 +49,11 @@ def spec_str(args, name):
         ranked="ranked"
     else:
         ranked="distr"
-    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}.hdf5".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted, args.model)
+    if name in ["train_log", "test_log"]:
+        file_type="log"
+    else:
+        file_type="hdf5"
+    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}.{}".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted, args.model,file_type)
 
 def noise_func(action):
     return  0.005 * np.random.randn(1)
@@ -82,6 +91,8 @@ def main():
     parser.add_argument("--model", default="fc")
     parser.add_argument("--path", default="../data/")
 
+    parser.add_argument("--mixed_alpha", type=float,default=0.5)
+
     parser.add_argument("--sorted",action="store_true")
     parser.add_argument("--pretrain",default="")
 
@@ -106,6 +117,8 @@ def main():
         seller_class=TrickySeller
     elif args.seller == "comp":
         seller_class=ComparativeSeller
+    elif args.seller == "mixed":
+        pass
     else:
         assert(False),"invalid seller type"
 
@@ -124,11 +137,15 @@ def main():
 
     quality_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
     cost_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
-    #cost_sampler = sampler.UniformSampler()
     price_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
     noise_sampler = sampler.GaussianSampler(mu = 0., sigma = 0.05/3)
 
-    sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
+    if args.seller == "mixed":
+        args.seller="mixed_{}".format(args.mixed_alpha)
+        args.nr_seller * args.mixed_alpha
+        sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
+    else:
+        sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
 
     log.info("seller:{}".format(seller_class))
     game = PriceMarket(sellers=sellers,buyer=buyer,nr_observation = args.duration, max_duration=1000)
@@ -151,6 +168,7 @@ def main():
                 noise_func=noise_func,
                 actor_save_path = spec_str(args, "actor"),
                 critic_save_path = spec_str(args, "critic"),
+                log_save_path = spec_str(args,"train_log"),
                 actor_weight_path=actor_weight_path,
                 critic_weight_path=critic_weight_path
         )
@@ -176,13 +194,16 @@ def main():
         )
     else:
         assert(args.s in strategy_map)
-        strategy = strategy_map[args.s]()
+        if args.s in [ "UCB1", "egreedy"]:
+            strategy = strategy_map[args.s](game.action_dim)
+        else:
+            strategy = strategy_map[args.s]()
 
     log.info("start testing {}".format(strategy))
     for epoch in range(1000):
         total_reward = 0
-        game.reset(hard=True)
-        strategy.reset()
+        game.reset(hard=False)
+        #strategy.reset()
         pbar = tqdm(range(1000))
         for step in pbar:
             #print("=========step {}=========\n{}\n".format(step,game.get_observation_string()))

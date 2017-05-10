@@ -12,6 +12,6 @@ class HistoryBuyer(Buyer):
         if self.average_views is None:
             self.average_views = views
         else:
-            self.average_views = self.GAMMA * self.average_views + views
+            self.average_views = self.GAMMA * self.average_views + (1- self.GAMMA) * views
             self.average_views = self.average_views / np.sum(self.average_views)
         return self.average_views * (1-prices)

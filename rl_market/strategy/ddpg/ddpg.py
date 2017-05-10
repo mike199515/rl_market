@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
@@ -8,6 +9,8 @@ from ..base import Strategy
 import rl_market.utils.logging_conf
 import logging as log
 from tqdm import tqdm
+
+
 
 class DDPG(Strategy):
     def __init__(self,
@@ -23,12 +26,13 @@ class DDPG(Strategy):
             critic_weight_path = None,
             actor_save_path = None,
             critic_save_path = None,
+            log_save_path = None,
             BUFFER_SIZE = 100000,
             BATCH_SIZE = 32,
             GAMMA = 0.99,           # reward discount factor
             TAU = 0.001,            # target network shift rate
-            LRA = 0.0001,           # learning rate for actor
-            LRC = 0.00001,            # learning rate for critic
+            LRA = 0.00001,           # learning rate for actor
+            LRC = 0.0000001,            # learning rate for critic
             EXPLORE = 100000.,      # explore factor
             random_seed = 42):
 
@@ -73,6 +77,15 @@ class DDPG(Strategy):
             self.critic.target_model.load_weights(critic_weight_path)
             print("critic model weight loaded from {}".format(critic_weight_path))
 
+        self.logger = None
+        if log_save_path is not None:
+            if os.path.isfile(log_save_path):
+                answer = input("File {} exists! overwrite?(y/N)".format(log_save_path))
+                if answer in ["y","Y"]:
+                    self.logger = open(log_save_path,"w")
+            else:
+                self.logger = open(log_save_path,"w")
+
     def __repr__(self):
         return "DDPG"
 
@@ -84,7 +97,7 @@ class DDPG(Strategy):
             action_encoder = identity_func
 
         for episode in range(nr_episode):
-            game.reset(hard=True)
+            game.reset(hard=False)
             pbar = tqdm(range(nr_steps))
             state, args = self._get_state(game.get_observation())
             for step in pbar:
@@ -106,7 +119,7 @@ class DDPG(Strategy):
         epsilon = 1.
         total_step = 0
         for episode in range(nr_episode):
-            game.reset(hard = True)
+            game.reset(hard = False)
             observation = game.get_observation() # should be a numpy array
             state, args = self._get_state(observation)
             total_reward = 0.
@@ -121,6 +134,9 @@ class DDPG(Strategy):
                 #update state & show stats
                 state, args = new_state, new_args
                 pbar.set_description("s{} R{:.3} L{:.3}".format(step, reward, loss))
+                if self.logger:
+                    self.logger.write("{}\n".format((episode*nr_steps+step,reward,loss)))
+
                 total_reward += reward
                 total_loss +=loss
                 total_step += 1
@@ -143,9 +159,9 @@ class DDPG(Strategy):
     def play(self, game):
         #given observation, get action
         observation = game.get_observation()
-        state = self._get_state(observation)
+        state, args = self._get_state(observation)
         action_encoding = self.actor.model.predict([state[np.newaxis,:]])[0]
-        return self._get_action(action_encoding)
+        return self._get_action(action_encoding, args)
 
     def _get_state(self, observation):
         # potential for observation conversion here

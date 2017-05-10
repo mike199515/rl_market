@@ -17,7 +17,7 @@ class TrickySeller(SimpleSeller):
         if nr_history <=2:
             return self.price_sampler.sample()
 
-        # trick the direct_algorithm by randomly pick 0 price to attract buyers
+        # trick the direct_algorithm by randomly pick 0.5 price to attract buyers
         if np.random.random()<self.trick_prob:
             return 0.
 
