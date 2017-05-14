@@ -28,7 +28,7 @@ class ReduceSum(Layer):
         return out_shape
 
 class GRUModel(ModelGenerator):
-    def __init__(self, bh = 256, ih = 64, eh = 256):
+    def __init__(self, bh = 128, ih = 256, eh = 512):
         self.bh = bh
         self.ih = ih
         self.eh = eh

@@ -36,6 +36,7 @@ def main():
     parser.add_argument("--path" ,default="../data/")
     parser.add_argument("--save_path",default="../plot/")
     parser.add_argument("--draw_baseline",action="store_true")
+    parser.add_argument("--step",type=int,default=-1)
     parser.add_argument("type",type=str)
     args = parser.parse_args()
     assert(args.type in ["reward", "loss"])
@@ -58,7 +59,10 @@ def main():
         losses.append(loss)
 
     log.info("found {} steps.".format(len(steps)))
-
+    if args.step!=-1:
+        steps=steps[:args.step]
+        rewards=rewards[:args.step]
+        losses=losses[:args.step]
 
     plt.figure()
     if args.type == "loss":

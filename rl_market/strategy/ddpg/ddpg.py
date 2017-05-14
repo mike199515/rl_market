@@ -10,8 +10,6 @@ import rl_market.utils.logging_conf
 import logging as log
 from tqdm import tqdm
 
-
-
 class DDPG(Strategy):
     def __init__(self,
             state_shape,
@@ -27,13 +25,14 @@ class DDPG(Strategy):
             actor_save_path = None,
             critic_save_path = None,
             log_save_path = None,
-            BUFFER_SIZE = 100000,
+            BUFFER_SIZE = 1000000,
             BATCH_SIZE = 32,
             GAMMA = 0.99,           # reward discount factor
             TAU = 0.001,            # target network shift rate
-            LRA = 0.00001,           # learning rate for actor
+            LRA = 0.000001,           # learning rate for actor
             LRC = 0.0000001,            # learning rate for critic
             EXPLORE = 100000.,      # explore factor
+            hard_reset = False,
             random_seed = 42):
 
         super(DDPG, self).__init__()
@@ -52,6 +51,7 @@ class DDPG(Strategy):
         self.LRA = LRA
         self.LRC = LRC
         self.EXPLORE = EXPLORE
+        self.hard_reset=hard_reset
 
         K.set_learning_phase(learning_phase)
 
@@ -97,7 +97,7 @@ class DDPG(Strategy):
             action_encoder = identity_func
 
         for episode in range(nr_episode):
-            game.reset(hard=False)
+            game.reset(hard=self.hard_reset)
             pbar = tqdm(range(nr_steps))
             state, args = self._get_state(game.get_observation())
             for step in pbar:
@@ -119,7 +119,7 @@ class DDPG(Strategy):
         epsilon = 1.
         total_step = 0
         for episode in range(nr_episode):
-            game.reset(hard = False)
+            game.reset(hard = self.hard_reset)
             observation = game.get_observation() # should be a numpy array
             state, args = self._get_state(observation)
             total_reward = 0.

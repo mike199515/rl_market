@@ -41,6 +41,10 @@ strategy_map={
 }
 
 def spec_str(args, name):
+    if args.hard_reset:
+        hard_reset="hard"
+    else:
+        hard_reset="soft"
     if args.sorted:
         sorted="sorted"
     else:
@@ -53,7 +57,7 @@ def spec_str(args, name):
         file_type="log"
     else:
         file_type="hdf5"
-    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}.{}".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted, args.model,file_type)
+    return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}_{}.{}".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted,hard_reset, args.model,file_type)
 
 def noise_func(action):
     return  0.005 * np.random.randn(1)
@@ -95,6 +99,7 @@ def main():
 
     parser.add_argument("--sorted",action="store_true")
     parser.add_argument("--pretrain",default="")
+    parser.add_argument("--hard_reset",action="store_true")
 
     args = parser.parse_args()
     if args.model == "fc":
@@ -141,13 +146,17 @@ def main():
     noise_sampler = sampler.GaussianSampler(mu = 0., sigma = 0.05/3)
 
     if args.seller == "mixed":
+        sigma = min(args.mixed_alpha, 1. - args.mixed_alpha)/3.
+        epsilon_sampler = sampler.BoundGaussianSampler(mu = args.mixed_alpha, sigma = sigma)
         args.seller="mixed_{}".format(args.mixed_alpha)
-        args.nr_seller * args.mixed_alpha
-        sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
+        sellers = [TrickySeller(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler,
+            epsilon_sampler = epsilon_sampler
+            ) for i in range(args.nr_seller)]
+        log.info("seller:mixed")
     else:
         sellers = [seller_class(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler) for i in range(args.nr_seller)]
+        log.info("seller:{}".format(seller_class))
 
-    log.info("seller:{}".format(seller_class))
     game = PriceMarket(sellers=sellers,buyer=buyer,nr_observation = args.duration, max_duration=1000)
     log.info("initialize game:{}".format(game))
     log.info("state shape: {}".format(game.state_shape))
@@ -170,7 +179,8 @@ def main():
                 critic_save_path = spec_str(args, "critic"),
                 log_save_path = spec_str(args,"train_log"),
                 actor_weight_path=actor_weight_path,
-                critic_weight_path=critic_weight_path
+                critic_weight_path=critic_weight_path,
+                hard_reset = args.hard_reset
         )
         if args.pretrain !="":
             log.info("pretrain enabled with strategy {}".format(args.pretrain))
@@ -202,7 +212,7 @@ def main():
     log.info("start testing {}".format(strategy))
     for epoch in range(1000):
         total_reward = 0
-        game.reset(hard=False)
+        game.reset(hard=args.hard_reset)
         #strategy.reset()
         pbar = tqdm(range(1000))
         for step in pbar:

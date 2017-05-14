@@ -4,8 +4,11 @@ import numpy as np
 
 
 class TrickySeller(SimpleSeller):
-    def __init__(self, trick_prob = 0.1, *args, **kargs):
-        self.trick_prob = trick_prob
+    def __init__(self, trick_prob = 0.1, epsilon_sampler = None, *args, **kargs):
+        if epsilon_sampler is not None:
+            self.trick_prob = epsilon_sampler.sample()
+        else:
+            self.trick_prob = trick_prob
         super(TrickySeller, self).__init__(*args, **kargs)
 
     def __repr__(self):
@@ -22,13 +25,7 @@ class TrickySeller(SimpleSeller):
             return 0.
 
         # pick up the most profitable index instead
-        best_price = None
-        best_profit = -float("inf")
-        for price, trade_amount in zip(game.price[-1], game.trade_amount[-1]):
-            profit = (price - self.cost) * trade_amount
-            if profit > best_profit:
-                best_price = price
-                best_profit = profit
+        best_price, best_profit = game.price[-1][index], game.trade_amount[-1][index]
         self.trade_history.append((best_price, best_profit))
 
         if len(self.trade_history)> self.max_trade_history:

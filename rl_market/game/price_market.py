@@ -80,10 +80,14 @@ class PriceMarket(Game):
         return ret
 
     def get_weight_from_score(self, scores):
-        rank = np.argsort(np.argsort(-scores))
-        exp_rank = np.exp(-rank)
-        exp_rank/= np.sum(exp_rank)
-        return exp_rank
+        #rank = np.argsort(np.argsort(-scores))
+        #exp_rank = np.exp(-rank)
+        #exp_rank/= np.sum(exp_rank)
+        #return exp_rank
+        ret = np.zeros_like(scores)
+        chosen = np.argmax(scores)
+        ret[chosen] = 1.
+        return ret
 
     def step(self, weights):
         assert(len(weights.shape)==1)
@@ -96,9 +100,6 @@ class PriceMarket(Game):
         for i, seller in enumerate(self.sellers):
             price[i] = seller.decide_price(self, i)
 
-        quality = np.zeros((nr_sellers,))
-        for i, seller in enumerate(self.sellers):
-            quality[i] = seller.get_quality(self, i)
         if self.enable_score:
             weights = self.get_weight_from_score(weights)
         else:
@@ -107,7 +108,7 @@ class PriceMarket(Game):
         # calculate views
         view = weights[:]
         # calculate trade
-        trade_amount = self.buyer.decide_buy_prob(views=view, prices=price, qualities=quality)
+        trade_amount = self.buyer.decide_buy_prob(views=view, prices=price, trade_amounts = self.trade_amount)
         trade_value = trade_amount * price
 
         #write to history
