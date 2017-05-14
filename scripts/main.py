@@ -19,6 +19,7 @@ from rl_market.player.seller.comparative_seller import ComparativeSeller
 from rl_market.player.seller.tricky_seller import TrickySeller
 from rl_market.player.seller.simple_seller import SimpleSeller
 from rl_market.player.seller.ddpg_seller import DDPGSeller
+from rl_market.player.seller.limited_rational_seller import LimitedRationalSeller
 
 import rl_market.utils.logging_conf
 import rl_market.utils.sampler as sampler
@@ -120,6 +121,8 @@ def main():
         seller_class=SimpleSeller
     elif args.seller == "tricky":
         seller_class=TrickySeller
+    elif args.seller == "limited":
+        seller_class=LimitedRationalSeller
     elif args.seller == "comp":
         seller_class=ComparativeSeller
     elif args.seller == "mixed":

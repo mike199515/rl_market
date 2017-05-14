@@ -103,7 +103,7 @@ class PriceMarket(Game):
         if self.enable_score:
             weights = self.get_weight_from_score(weights)
         else:
-            weights = np.maximum(weights,0)
+            weights = np.maximum(weights,1e-10)
             weights = weights/np.sum(weights) # normalize
         # calculate views
         view = weights[:]
@@ -115,6 +115,7 @@ class PriceMarket(Game):
         self.view.append(view)
         self.trade_amount.append(trade_amount)
         self.trade_value.append(trade_value)
+        #print("trade_value sum:{}".format(np.sum(trade_value)))
         self.price.append(price)
         self.duration += 1
         reward = self._calculate_reward()
