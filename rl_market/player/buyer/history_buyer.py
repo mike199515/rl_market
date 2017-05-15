@@ -19,6 +19,6 @@ class HistoryBuyer(Buyer):
             self.average_amounts = self.GAMMA * self.average_amounts + latest_trade_amount
         #log_amounts = np.log(self.average_amounts + 1)
         #norm_average_amounts = log_amounts / np.max(log_amounts)
-        norm_average_amounts = .9 + .1 * self.average_amounts / np.max(self.average_amounts)
+        norm_average_amounts = self.average_amounts / np.max(self.average_amounts)
 
         return views * (1-prices) * norm_average_amounts

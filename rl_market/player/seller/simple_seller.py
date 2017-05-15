@@ -5,7 +5,7 @@ class SimpleSeller(Seller):
     def __init__(self, quality_sampler, cost_sampler, price_sampler,
             noise_sampler,
             discount_factor = 0.95,
-			max_trade_history = 20,
+			max_trade_history = 100,
             ):
         self.quality_sampler=quality_sampler
         self.cost_sampler=cost_sampler
@@ -13,8 +13,8 @@ class SimpleSeller(Seller):
         self.noise_sampler=noise_sampler
 
         self.discount_factor = discount_factor
-        self.max_trade_history = max_trade_history
 
+        self.max_trade_history = max_trade_history
         self.reset(hard = True)
 
     def __repr__(self):
@@ -40,7 +40,7 @@ class SimpleSeller(Seller):
         best_price, best_profit = None, 0
         for idx, (price, profit) in enumerate(self.trade_history):
             interval = len(self.trade_history) - idx
-            discounted_profit = profit * np.power(self.discount_factor, interval)
+            discounted_profit = profit
             if discounted_profit > best_profit:
                 best_price = price
                 best_profit = profit

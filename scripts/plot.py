@@ -10,7 +10,7 @@ from scipy import interpolate
 import matplotlib.pyplot as plt
 
 def average_value(value):
-    gamma = 0.99
+    gamma = 0.999
     means = []
     sigmas = []
     weighted_average=value[0]

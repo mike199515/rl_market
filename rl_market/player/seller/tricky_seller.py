@@ -25,7 +25,9 @@ class TrickySeller(SimpleSeller):
             return 0.
 
         # pick up the most profitable index instead
-        best_price, best_profit = game.price[-1][index], game.trade_amount[-1][index]
+
+        best_price, best_trade_amount = game.price[-1][index], game.trade_amount[-1][index]
+        best_profit = (best_price - self.cost) * best_trade_amount
         self.trade_history.append((best_price, best_profit))
 
         if len(self.trade_history)> self.max_trade_history:

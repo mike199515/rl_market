@@ -99,8 +99,8 @@ class GRUModel(ModelGenerator):
         print("values shape = ",values.get_shape())
         flat_values = Reshape((-1,))(values)
         #then reduce to one value by addition
-        #value = ReduceSum(axis = 1)(flat_values) #(batch,)
-        value  = Dense(1, activation="linear")(flat_values)
+        value = ReduceSum(axis = 1)(flat_values) #(batch,)
+        #value  = Dense(1, activation="linear")(flat_values)
         print("value shape = ",value.get_shape())
         model = Model(inputs=[inp,action], outputs=[value])
         opt = optimizer(LEARNING_RATE)

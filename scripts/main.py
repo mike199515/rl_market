@@ -18,7 +18,6 @@ from rl_market.player.buyer.history_buyer import HistoryBuyer
 from rl_market.player.seller.comparative_seller import ComparativeSeller
 from rl_market.player.seller.tricky_seller import TrickySeller
 from rl_market.player.seller.simple_seller import SimpleSeller
-from rl_market.player.seller.ddpg_seller import DDPGSeller
 from rl_market.player.seller.limited_rational_seller import LimitedRationalSeller
 
 import rl_market.utils.logging_conf
@@ -146,13 +145,13 @@ def main():
     quality_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
     cost_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
     price_sampler = sampler.BoundGaussianSampler(mu = 0.5, sigma = 0.5/3)
-    noise_sampler = sampler.GaussianSampler(mu = 0., sigma = 0.05/3)
+    noise_sampler = sampler.GaussianSampler(mu = 0., sigma = 0.1/3)
 
     if args.seller == "mixed":
         sigma = min(args.mixed_alpha, 1. - args.mixed_alpha)/3.
         epsilon_sampler = sampler.BoundGaussianSampler(mu = args.mixed_alpha, sigma = sigma)
         args.seller="mixed_{}".format(args.mixed_alpha)
-        sellers = [TrickySeller(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler,
+        sellers = [LimitedRationalSeller(quality_sampler=quality_sampler, cost_sampler=cost_sampler, price_sampler=price_sampler, noise_sampler=noise_sampler,
             epsilon_sampler = epsilon_sampler
             ) for i in range(args.nr_seller)]
         log.info("seller:mixed")

@@ -20,7 +20,6 @@ class LimitedRationalSeller(SimpleSeller):
         if nr_history <=2:
             return self.price_sampler.sample()
 
-        # trick the direct_algorithm by randomly pick 0.5 price to attract buyers
         if np.random.random()<self.trick_prob and len(self.trade_history)>0:
             r_idx = np.random.choice(len(self.trade_history))
             random_trade = self.trade_history[r_idx]
@@ -28,19 +27,22 @@ class LimitedRationalSeller(SimpleSeller):
             return self._regularize(random_price + self.noise_sampler.sample())
 
         # pick up the most profitable index instead
-        best_price, best_profit = game.price[-1][index], game.trade_amount[-1][index]
+        best_price, best_trade_amount = game.price[-1][index], game.trade_amount[-1][index]
+        best_profit = (best_price - self.cost) * best_trade_amount
         self.trade_history.append((best_price, best_profit))
 
         if len(self.trade_history)> self.max_trade_history:
             self.trade_history=self.trade_history[1:]
         #find the price most successful and sample from that range
         best_price, best_profit = None, 0
+
         for t, (price, profit) in enumerate(self.trade_history):
             interval = len(self.trade_history) - t
-            discounted_profit = profit * np.power(self.discount_factor, interval)
+            discounted_profit = profit
             if discounted_profit > best_profit:
                 best_price = price
                 best_profit = profit
         if best_price is None:
+            #print("price cannot make sense")
             return self.price_sampler.sample()
         return self._regularize(best_price + self.noise_sampler.sample())

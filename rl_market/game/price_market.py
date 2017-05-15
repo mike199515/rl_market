@@ -107,10 +107,13 @@ class PriceMarket(Game):
             weights = weights/np.sum(weights) # normalize
         # calculate views
         view = weights[:]
+        #print("price",price)
+        #print("view",view)
         # calculate trade
         trade_amount = self.buyer.decide_buy_prob(views=view, prices=price, trade_amounts = self.trade_amount)
+        #print("trade_amount",trade_amount)
         trade_value = trade_amount * price
-
+        #print("trade_value",trade_value)
         #write to history
         self.view.append(view)
         self.trade_amount.append(trade_amount)
