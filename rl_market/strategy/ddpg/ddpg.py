@@ -30,7 +30,7 @@ class DDPG(Strategy):
             GAMMA = 0.99,           # reward discount factor
             TAU = 0.001,            # target network shift rate
             LRA = 0.00001,           # learning rate for actor
-            LRC = 0.0000001,            # learning rate for critic
+            LRC = 0.000001,            # learning rate for critic
             EXPLORE = 100000.,      # explore factor
             hard_reset = False,
             random_seed = 42):

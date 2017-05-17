@@ -10,7 +10,7 @@ from scipy import interpolate
 import matplotlib.pyplot as plt
 
 def average_value(value):
-    gamma = 0.999
+    gamma = 0.99
     means = []
     sigmas = []
     weighted_average=value[0]
@@ -37,14 +37,15 @@ def main():
     parser.add_argument("--save_path",default="../plot/")
     parser.add_argument("--draw_baseline",action="store_true")
     parser.add_argument("--step",type=int,default=-1)
+    parser.add_argument("--variance",action="store_true")
     parser.add_argument("type",type=str)
     args = parser.parse_args()
     assert(args.type in ["reward", "loss"])
     chosen_log = search_possible_files(args)
     print("chosen ",chosen_log)
-    save_path = "{}/{}_{}.png".format(args.save_path,args.type,chosen_log.split("/")[-1].split(".")[0])
+    save_path = "{}/{}_{}.png".format(args.save_path,args.type,chosen_log.split("/")[-1][:-4])
     log.info("prepare to save to {}".format(save_path))
-    algorithm_name = chosen_log.split("/")[-1].split(".")[0].split("_")[-1]
+    algorithm_name = chosen_log.split("/")[-1][:-4].split("_")[-1]
     f = open(chosen_log,"r")
 
     steps = []
@@ -68,12 +69,13 @@ def main():
     if args.type == "loss":
         loss_means, _ = average_value(losses)
         plt.semilogy(steps, loss_means)
-        plt.title("training loss/step of {}".format(algorithm_name))
+        plt.title("loss/step of {}".format(algorithm_name))
     elif args.type == "reward":
         reward_means, reward_sigmas = average_value(rewards)
-        plt.fill_between(steps, reward_means-reward_sigmas, reward_means+reward_sigmas,color="gray",alpha=0.5)
+        if args.variance:
+            plt.fill_between(steps, reward_means-reward_sigmas, reward_means+reward_sigmas,color="gray",alpha=0.5)
         plt.plot(steps, reward_means, color="red")
-        plt.title("training reward/step of {}".format(algorithm_name))
+        plt.title("reward/step of {}".format(algorithm_name))
     plt.savefig(save_path)
 
 

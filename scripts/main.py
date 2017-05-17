@@ -57,6 +57,8 @@ def spec_str(args, name):
         file_type="log"
     else:
         file_type="hdf5"
+    if name == "test_log":
+        return "{}/{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.{}".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted,hard_reset, args.s,args.model,file_type)
     return "{}/ddpg_{}_{}_{}_{}_{}_{}_{}_{}_{}.{}".format(args.path, name, args.buyer,args.seller, args.nr_seller, args.duration,ranked,sorted,hard_reset, args.model,file_type)
 
 def noise_func(action):
@@ -212,6 +214,10 @@ def main():
             strategy = strategy_map[args.s]()
 
     log.info("start testing {}".format(strategy))
+    test_log_path = spec_str(args,"test_log")
+    log.info("log save to {}".format(test_log_path))
+    test_logger = open(test_log_path,"w")
+
     for epoch in range(1000):
         total_reward = 0
         game.reset(hard=args.hard_reset)
@@ -223,6 +229,7 @@ def main():
             reward, done = game.step(action)
             total_reward += reward
             pbar.set_description("s{} R{:3}".format(step, reward))
+            test_logger.write("{}\n".format((epoch*1000+step, reward, 0)))
             if done:
                 break
         log.info("total reward@{}-th episode: {}".format(epoch, total_reward))

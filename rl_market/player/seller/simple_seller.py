@@ -5,7 +5,7 @@ class SimpleSeller(Seller):
     def __init__(self, quality_sampler, cost_sampler, price_sampler,
             noise_sampler,
             discount_factor = 0.95,
-			max_trade_history = 100,
+			max_trade_history = 20,
             ):
         self.quality_sampler=quality_sampler
         self.cost_sampler=cost_sampler
